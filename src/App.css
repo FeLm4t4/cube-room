@@ -100,7 +100,7 @@ button:not(:disabled), a { transition: color 150ms ease, background-color 150ms 
 .shuffle-button { width: 100%; justify-content: flex-start; height: 47px; }
 .shuffle-button > span { margin-top: -1px; }
 kbd { font: inherit; border: 1px solid #dedfd6; background: #f5f6ef; border-radius: 4px; padding: 2px 5px; color: #777e6b; font-family: 'DM Sans', 'Noto Sans JP', sans-serif; font-size: 10px; line-height: 1.4; white-space: nowrap; box-shadow: 0 1px 0 #dedfd6; }
-.shuffle-button kbd { margin-left: auto; font-size: 9px; color: #fff0e7; background: #ffffff12; border-color: #ffffff38; padding: 2px 5px; box-shadow: none; }
+.shuffle-length { margin-left: auto; font-size: 9px; line-height: 1.4; white-space: nowrap; color: #fff0e7; background: #ffffff12; border: 1px solid #ffffff38; border-radius: 4px; padding: 2px 5px; }
 .undo-button { display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%; border: 1px solid #e1e4d9; border-radius: 8px; margin-top: 8px; height: 38px; padding: 0 15px; background: #fafbf6; color: #717a62; font-size: 11px; }
 .undo-button:hover:not(:disabled) { background: #edf0e5; border-color: #ccd3be; }
 .undo-button:disabled { color: #b4b8aa; border-color: #eceee5; background: #fafbf7; }

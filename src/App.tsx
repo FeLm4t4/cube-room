@@ -7,7 +7,8 @@ import { useSolution } from './cube/useSolution'
 import './App.css'
 
 const GITHUB_URL = 'https://github.com/FeLm4t4/cube-room'
-const SHUFFLE_LENGTH = 80
+const MIN_SHUFFLE_LENGTH = 20
+const MAX_SHUFFLE_LENGTH = 40
 const FACES: { face: Face; label: string; color: string }[] = [
   { face: 'U', label: '上', color: '#f4f6f8' },
   { face: 'F', label: '手前', color: '#43b28b' },
@@ -76,6 +77,7 @@ export default function App() {
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const [error, setError] = useState('')
   const [shuffleProgress, setShuffleProgress] = useState(0)
+  const [shuffleLength, setShuffleLength] = useState<number | null>(null)
   const generationRef = useRef(0)
   const [solutionVisible, setSolutionVisible] = useState(false)
   const solutionVisibleRef = useRef(false)
@@ -84,9 +86,9 @@ export default function App() {
   const [solutionPlaying, setSolutionPlaying] = useState(false)
   const stopPlaybackRef = useRef(false)
   const pendingCursorRef = useRef<{ move: Move; cursor: number } | null>(null)
-  const canAcceptSolution = useCallback(() => !busyRef.current && (!solutionVisibleRef.current || trailRef.current.cursor === 0), [])
+  const canAcceptSolution = useCallback(() => !busyRef.current, [])
   const { moves: solutionMoves, movesRef: solutionMovesRef, optimizing, apply: applySolution, reset: resetSolution } = useSolution(
-    ready && !busy && (!solutionVisible || trail.cursor === 0), canAcceptSolution,
+    ready && !busy, canAcceptSolution,
   )
   const rebaseTrail = useCallback((moves: readonly Move[]) => {
     const previous = trailRef.current
@@ -97,8 +99,19 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (solutionVisibleRef.current && !busyRef.current && trailRef.current.cursor === 0) rebaseTrail(solutionMoves)
-  }, [solutionMoves, solutionVisible, rebaseTrail])
+    if (!solutionVisibleRef.current || busyRef.current) return
+    const previous = trailRef.current
+    const currentSolution = solutionMovesRef.current
+    const remaining = previous.moves.slice(previous.cursor)
+    if (remaining.length === currentSolution.length && remaining.every((move, index) => {
+      const next = currentSolution[index]
+      return move.axis === next.axis && move.layer === next.layer && move.turns === next.turns
+    })) return
+    // たどった手順と現在位置を残し、停止中に残りの解法だけを更新する。
+    const next = { moves: [...previous.moves.slice(0, previous.cursor), ...currentSolution], cursor: previous.cursor }
+    trailRef.current = next
+    setTrail(next)
+  }, [solutionMoves, solutionMovesRef, solutionVisible, busy])
 
   useEffect(() => () => {
     // 画面を閉じた後に、待機中の回転から次の手を実行しない。
@@ -225,7 +238,9 @@ export default function App() {
       setScrambled(true)
       setSolved(false)
       setShuffleProgress(0)
-      const moves = createScramble(SHUFFLE_LENGTH)
+      const length = MIN_SHUFFLE_LENGTH + Math.floor(Math.random() * (MAX_SHUFFLE_LENGTH - MIN_SHUFFLE_LENGTH + 1))
+      const moves = createScramble(length)
+      setShuffleLength(length)
       for (let index = 0; index < moves.length; index += 1) {
         if (generation !== generationRef.current || !stageRef.current) return
         await stageRef.current!.playMove(moves[index], Math.min(speedRef.current, 50))
@@ -323,6 +338,8 @@ export default function App() {
     setHistory([])
     scrambledRef.current = false
     setScrambled(false)
+    setShuffleLength(null)
+    setShuffleProgress(0)
     setSolved(true)
     setError('')
     resetClock()
@@ -367,7 +384,7 @@ export default function App() {
   const won = solved && history.length > 0
   const shuffling = busy && operationRef.current === 'shuffle'
   const controlsDisabled = !ready || busy
-  const status = !ready ? 'キューブを準備しています' : shuffling ? `${SHUFFLE_LENGTH}手でシャッフルしています` : solutionPlaying ? '解法例をたどっています' : won ? '6面が揃いました' : scrambled || history.length ? 'プレイ中' : '完成状態'
+  const status = !ready ? 'キューブを準備しています' : shuffling ? `${shuffleLength}手でシャッフルしています` : solutionPlaying ? '解法例をたどっています' : won ? '6面が揃いました' : scrambled || history.length ? 'プレイ中' : '完成状態'
   const renderModeLabel = performanceStats?.renderMode === 'GPU' ? 'GPU / WebGL 2' : performanceStats?.renderMode === 'software' ? 'ソフトウェア / WebGL 2' : 'WebGL 2'
 
   return (
@@ -415,7 +432,7 @@ export default function App() {
               <div><span className="stat-label">手数</span><span className="stat-value move-value">{String(history.length).padStart(2, '0')}<span className="stat-unit">手</span></span></div>
             </div>
             <p className={`session-status${won ? ' status-solved' : ''}`} aria-live="polite">{won ? <Icon name="check" size={15} /> : <span className={`status-dot${shuffling ? ' is-shuffling' : ''}`} />}{status}</p>
-            <button type="button" className="primary-button shuffle-button" onClick={() => void shuffle()} disabled={controlsDisabled}><Icon name="shuffle" size={19} /><span>{shuffling ? `シャッフル中 ${shuffleProgress}/${SHUFFLE_LENGTH}` : 'シャッフル'}</span><kbd>{SHUFFLE_LENGTH}手</kbd></button>
+            <button type="button" className="primary-button shuffle-button" onClick={() => void shuffle()} disabled={controlsDisabled}><Icon name="shuffle" size={19} /><span>{shuffling ? `シャッフル中 ${shuffleProgress}/${shuffleLength}` : 'シャッフル'}</span><span className="shuffle-length">{shuffleLength ?? `${MIN_SHUFFLE_LENGTH}〜${MAX_SHUFFLE_LENGTH}`}手</span></button>
             <button type="button" className="undo-button" onClick={() => void undo()} disabled={controlsDisabled || !history.length}><Icon name="undo" size={17} /><span>一手戻す</span><span className="undo-shortcut">Ctrl / ⌘ Z</span></button>
             <button type="button" className={`solution-toggle${solutionVisible ? ' selected' : ''}`} onClick={toggleSolution} disabled={controlsDisabled} aria-expanded={solutionVisible} aria-controls="solution-trail"><Icon name="spark" size={17} /><span>解法例</span><span className="solution-count">{solutionMoves.length ? `残り ${solutionMoves.length}手` : '完成'}</span></button>
 
