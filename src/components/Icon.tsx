@@ -17,6 +17,8 @@ export type IconName =
   | 'github'
   | 'keyboard'
   | 'spark'
+  | 'maximize'
+  | 'minimize'
 
 type IconProps = {
   name: IconName
@@ -44,6 +46,8 @@ export function Icon({ name, size = 20, className, strokeWidth = 1.7, style }: I
     github: <><path d="M9 19c-4.3 1.3-4.3-2.2-6-2.6m12 5v-3.3c0-1 .1-1.5-.5-2 3.5-.4 7.1-1.7 7.1-7.6A5.9 5.9 0 0 0 20 4.4 5.5 5.5 0 0 0 19.9.3S18.6-.1 15.6 2a14.3 14.3 0 0 0-7.8 0C4.8-.1 3.5.3 3.5.3a5.5 5.5 0 0 0-.1 4.1 5.9 5.9 0 0 0-1.6 4.1c0 5.9 3.6 7.2 7.1 7.6-.5.4-.8 1-.8 2v3.3" transform="translate(1 1) scale(.92)" /></>,
     keyboard: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 15h10" /></>,
     spark: <><path d="m12 2 2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7L12 2Z" /></>,
+    maximize: <><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></>,
+    minimize: <><path d="M3 8h5V3m8 0v5h5M8 21v-5H3m13 5v-5h5" /></>,
   }
 
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} style={style} aria-hidden="true">{shapes[name]}</svg>
