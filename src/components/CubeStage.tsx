@@ -123,7 +123,7 @@ class CubeEngine {
       else if (/nvidia|amd|radeon|geforce|intel|apple|adreno|mali|powervr/i.test(rendererName)) this.renderMode = 'GPU';
     }
     canvas.style.cssText = 'width:100%;height:100%;display:block;touch-action:none;outline:none;';
-    canvas.setAttribute('aria-label', '3Dルービックキューブ。左ドラッグで列を回転、右ドラッグで視点を変更。キーボード操作は隣の面ボタンからも利用できます。');
+    canvas.setAttribute('aria-label', '3Dルービックキューブ。左ドラッグで列を回転、右ドラッグで視点を変更。キーボード操作は操作ガイドで確認できます。');
     canvas.setAttribute('role', 'img');
     canvas.dataset.testid = 'cube-canvas';
     host.appendChild(canvas);
