@@ -88,6 +88,8 @@ function containDialogFocus(event: ReactKeyboardEvent<HTMLDialogElement>) {
 
 export default function App() {
     const stageRef = useRef<CubeStageHandle>(null);
+    const stageCardRef = useRef<HTMLElement>(null);
+    const solutionToggleRef = useRef<HTMLButtonElement>(null);
     const [ready, setReady] = useState(false);
     const readyRef = useRef(false);
     const [busy, setBusy] = useState(false);
@@ -452,6 +454,10 @@ export default function App() {
         stopPlaybackRef.current = true;
         solutionVisibleRef.current = false;
         setSolutionVisible(false);
+        const focusTarget = solutionToggleRef.current?.disabled
+            ? stageCardRef.current
+            : solutionToggleRef.current;
+        focusTarget?.focus({ preventScroll: true });
     }, []);
 
     const toggleSolution = useCallback(() => {
@@ -461,6 +467,10 @@ export default function App() {
             rebaseTrail(solutionMovesRef.current);
             solutionVisibleRef.current = true;
             setSolutionVisible(true);
+            stageCardRef.current?.scrollIntoView({
+                block: "nearest",
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+            });
         }
     }, [closeSolution, rebaseTrail, solutionMovesRef]);
 
@@ -627,6 +637,8 @@ export default function App() {
                     className={`workspace-grid${solutionVisible ? " has-solution" : ""}`}
                 >
                     <section
+                        ref={stageCardRef}
+                        tabIndex={-1}
                         className={`stage-card${won ? " is-solved" : ""}`}
                         aria-label="3D ルービックキューブ"
                     >
@@ -755,6 +767,23 @@ export default function App() {
                                 </button>
                             </div>
                         </div>
+                        {solutionVisible && (
+                            <SolutionTrail
+                                moves={trail.moves}
+                                cursor={trail.cursor}
+                                busy={controlsDisabled}
+                                playing={solutionPlaying}
+                                optimizing={optimizing}
+                                searchSeconds={searchSeconds}
+                                onSearchSecondsChange={changeSearchSeconds}
+                                onSeek={(index) => void seekSolution(index)}
+                                onPlay={() =>
+                                    void seekSolution(trailRef.current.moves.length)
+                                }
+                                onPause={pauseSolution}
+                                onClose={closeSolution}
+                            />
+                        )}
                     </section>
 
                     <aside
@@ -836,6 +865,7 @@ export default function App() {
                             <span className="undo-shortcut">Ctrl / ⌘ Z</span>
                         </button>
                         <button
+                            ref={solutionToggleRef}
                             type="button"
                             className={`solution-toggle${solutionVisible ? " selected" : ""}`}
                             onClick={toggleSolution}
@@ -902,24 +932,6 @@ export default function App() {
                             </div>
                         </div>
                     </aside>
-
-                    {solutionVisible && (
-                        <SolutionTrail
-                            moves={trail.moves}
-                            cursor={trail.cursor}
-                            busy={controlsDisabled}
-                            playing={solutionPlaying}
-                            optimizing={optimizing}
-                            searchSeconds={searchSeconds}
-                            onSearchSecondsChange={changeSearchSeconds}
-                            onSeek={(index) => void seekSolution(index)}
-                            onPlay={() =>
-                                void seekSolution(trailRef.current.moves.length)
-                            }
-                            onPause={pauseSolution}
-                            onClose={closeSolution}
-                        />
-                    )}
 
                     <section
                         className="history-bar"

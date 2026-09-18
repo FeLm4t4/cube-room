@@ -40,11 +40,16 @@ function describeMove(move: Move) {
 
 export function SolutionTrail({ moves, cursor, busy, playing, optimizing, searchSeconds, onSearchSecondsChange, onSeek, onPlay, onPause, onClose }: SolutionTrailProps) {
   const id = useId()
+  const closeRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLOListElement>(null)
   const currentRef = useRef<HTMLButtonElement>(null)
   const current = Math.min(Math.max(cursor, 0), moves.length)
   const complete = moves.length > 0 && current === moves.length
   const remaining = moves.length - current
+
+  useEffect(() => {
+    closeRef.current?.focus({ preventScroll: true })
+  }, [])
 
   useEffect(() => {
     const list = listRef.current
@@ -63,7 +68,7 @@ export function SolutionTrail({ moves, cursor, busy, playing, optimizing, search
     <section id="solution-trail" className="solution-trail" aria-labelledby={`${id}-title`}>
       <div className="trail-heading">
         <div className="trail-heading-main"><h2 id={`${id}-title`}>解法例</h2><span className="trail-position"><strong>{current}</strong> / {moves.length} 手</span></div>
-        <button type="button" className="trail-close" onClick={onClose} aria-label="解法例を閉じる" title="解法例を閉じる"><Icon name="close" size={19} /></button>
+        <button ref={closeRef} type="button" className="trail-close" onClick={onClose} aria-label="解法例を閉じる" title="解法例を閉じる"><Icon name="close" size={19} /></button>
       </div>
 
       <div className="trail-toolbar">

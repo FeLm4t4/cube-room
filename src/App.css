@@ -33,7 +33,6 @@ button:not(:disabled), a { transition: color 150ms ease, background-color 150ms 
 .app-shell:fullscreen .site-header { display: none; }
 .app-shell:fullscreen .main-content { padding-top: 16px; }
 .app-shell:fullscreen .stage-card { height: calc(100dvh - 84px); }
-.app-shell:fullscreen .has-solution .stage-card { height: calc(100dvh - 294px); }
 .skip-link { position: fixed; top: -80px; left: 20px; z-index: 100; background: var(--ink); color: #fff; border-radius: 8px; padding: 12px 20px; }
 .skip-link:focus { top: 16px; }
 .site-header { display: flex; align-items: center; justify-content: space-between; min-height: 64px; border-bottom: 1px solid var(--line); gap: 20px; }
@@ -73,6 +72,7 @@ button:not(:disabled), a { transition: color 150ms ease, background-color 150ms 
 .cube-stage-slot canvas { display: block; width: 100%; height: 100%; outline: none; }
 .cube-stage-slot canvas:focus-visible { outline: 3px solid #e8644370; outline-offset: -4px; }
 .stage-bottom { position: absolute; bottom: 22px; left: 25px; right: 25px; display: flex; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
+.has-solution .stage-bottom { visibility: hidden; }
 .stage-drag-hints { display: flex; gap: 20px; color: #727966; font-size: 11px; }
 .stage-drag-hints > span { display: flex; align-items: center; gap: 7px; }
 .mouse-hint { display: inline-block; position: relative; width: 11px; height: 15px; border: 1px solid #929b84; border-radius: 6px; }
@@ -118,7 +118,6 @@ kbd { font: inherit; border: 1px solid #dedfd6; background: #f5f6ef; border-radi
 .solution-toggle:hover:not(:disabled), .solution-toggle.selected { border-color: #abbc95; background: #e7eedc; }
 .solution-toggle:disabled { opacity: .5; }
 .solution-count { margin-left: auto; font-size: 10px; font-variant-numeric: tabular-nums; }
-.has-solution .stage-card { height: calc(100dvh - 350px); min-height: 520px; }
 .panel-divider { border-top: 1px solid #e9ebe2; margin: 20px 0 17px; }
 .speed-setting h2 { font-size: 11px; font-weight: 500; color: #6c7361; }
 .inverse-toggle { display: flex; align-items: center; gap: 6px; position: relative; cursor: pointer; color: #727966; font-size: 11px; }
@@ -212,8 +211,7 @@ kbd { font: inherit; border: 1px solid #dedfd6; background: #f5f6ef; border-radi
   .main-content { padding-top: 12px; }
   .workspace-grid { display: flex; flex-direction: column; gap: 0; }
   .stage-card { width: 100%; min-height: 420px; height: clamp(420px, calc(100dvh - 130px), 500px); border-radius: 12px; order: 0; }
-  .has-solution .stage-card { height: 420px; min-height: 420px; }
-  .app-shell:fullscreen .stage-card, .app-shell:fullscreen .has-solution .stage-card { height: clamp(420px, 65dvh, 560px); }
+  .app-shell:fullscreen .stage-card { height: clamp(420px, 65dvh, 560px); }
   .stage-topbar { top: 14px; left: 16px; right: 14px; }
   .mode-pill { font-size: 11px; padding: 7px 10px; }
   .stage-actions { gap: 7px; }
