@@ -1,0 +1,89 @@
+.solution-trail {
+  grid-column: 1 / -1;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #e1e4d8;
+  border-radius: 12px;
+  padding: 14px 18px 12px;
+  background: #fdfdf9;
+  color: #414b35;
+}
+
+.trail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; padding-right: 36px; }
+.trail-heading-main { display: flex; align-items: baseline; gap: 16px; min-width: 0; }
+.trail-heading h2 { font-size: 14px; font-weight: 600; letter-spacing: .2px; }
+.trail-position { font-family: 'DM Sans', 'Noto Sans JP', sans-serif; font-size: 12px; color: #838d74; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.trail-position strong { color: #48583a; font-size: 17px; font-weight: 500; }
+.trail-close { position: absolute; right: 11px; top: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border: 1px solid transparent; border-radius: 7px; padding: 0; color: #7c876d; background: transparent; }
+.trail-close:hover { background: #edf0e4; border-color: #e0e5d5; color: #455631; }
+.trail-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 4px; }
+.trail-hint { color: #768168; font-size: 11px; line-height: 1.8; }
+.trail-controls { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.trail-control { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 12px; border: 1px solid #dfe5d3; border-radius: 7px; background: #f5f7ef; color: #687957; font-size: 11px; white-space: nowrap; }
+.trail-control:hover:not(:disabled) { color: #465b33; background: #eaf0df; border-color: #bfcdae; }
+.trail-control:disabled { cursor: default; opacity: .42; }
+.trail-previous-icon { transform: rotate(180deg); }
+.trail-play { min-width: 124px; background: #e86443; border-color: #dc5a39; color: #fff9f5; }
+.trail-play:hover:not(:disabled) { background: #db5937; border-color: #d14e2e; color: #fff9f5; }
+.trail-play.is-playing { color: #b45b39; background: #f8e9de; border-color: #e9c4af; }
+.trail-play.is-playing:hover { color: #a24b29; background: #f4dfce; border-color: #d8ad91; }
+.trail-steps { display: flex; align-items: flex-start; flex-wrap: nowrap; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #c2cbb7 #f1f4e9; list-style: none; margin: 10px 0 0; padding: 5px 3px; border-top: 1px solid #edf0e5; border-bottom: 1px solid #edf0e5; }
+.trail-step { display: flex; align-items: center; flex-shrink: 0; }
+.trail-step > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 55px; height: 44px; padding: 4px 5px; border: 1px solid #e1e7d7; border-radius: 6px; background: #f7f9f2; color: #647651; font-family: 'DM Sans', 'Noto Sans JP', sans-serif; }
+.trail-step > button:hover:not(:disabled) { border-color: #b7c5a7; background: #edf3e4; color: #455f32; }
+.trail-step > button:disabled { cursor: default; }
+.trail-step-meta { display: flex; align-items: center; justify-content: center; gap: 2px; color: #8f9b80; font-family: 'DM Sans', 'Noto Sans JP', sans-serif; font-size: 9px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.trail-step-name { font-size: 14px; font-weight: 500; line-height: 1.2; }
+.trail-step:first-child .trail-step-name { font-family: 'Noto Sans JP', sans-serif; font-size: 11px; }
+.trail-separator { display: flex; align-items: center; justify-content: center; width: 16px; color: #abb89b; font-size: 16px; line-height: 1; }
+.trail-step.is-done > button { color: #7e8f6d; background: #f0f4e8; border-color: #e4eadb; }
+.trail-step.is-done .trail-step-meta { color: #8a9d76; }
+.trail-step.is-next > button { border-color: #ceaa90; border-style: dashed; background: #fbf6ec; color: #9d714f; }
+.trail-step.is-next .trail-step-meta { color: #a18565; }
+.trail-step.is-current > button { border-color: #e07c54; background: #faeee2; color: #b65b33; box-shadow: 0 0 0 1px #e07c5459; }
+.trail-step.is-current .trail-step-meta { color: #b66b45; }
+.trail-steps[aria-busy='true'] .trail-step:not(.is-current) > button { opacity: .6; }
+.trail-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 18px; margin-top: 8px; font-size: 11px; line-height: 1.6; }
+.trail-progress { display: flex; align-items: center; gap: 5px; color: #71835d; font-variant-numeric: tabular-nums; }
+.trail-progress.is-complete { color: #578039; }
+.trail-notation { color: #839171; }
+.trail-disclaimer { color: #839171; margin-left: auto; }
+.trail-working-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #d68a55; }
+
+@media (max-width: 850px) {
+  .trail-toolbar { flex-wrap: wrap; gap: 7px; }
+  .trail-controls { margin-left: auto; }
+  .trail-disclaimer { margin-left: 0; }
+}
+
+@media (max-width: 680px) {
+  .solution-trail { order: 1; margin-top: 10px; padding: 12px 14px; }
+  .trail-heading h2 { font-size: 13px; }
+  .trail-heading-main { gap: 12px; }
+  .trail-close { width: 44px; height: 44px; right: 5px; top: 3px; }
+  .trail-toolbar { margin-top: 4px; }
+  .trail-controls { width: 100%; display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 6px; margin-left: 0; }
+  .trail-control { min-width: 0; min-height: 44px; padding: 8px 7px; font-size: 11px; gap: 5px; }
+  .trail-steps { padding: 5px 2px; margin-top: 8px; }
+  .trail-step > button { width: 52px; }
+  .trail-separator { width: 13px; }
+  .trail-footer { gap: 5px; margin-top: 7px; }
+  .trail-progress { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .trail-notation { display: none; }
+  .trail-disclaimer { font-size: 10px; }
+}
+
+@media (pointer: coarse) {
+  .trail-control, .trail-close { min-height: 44px; }
+  .trail-close { min-width: 44px; }
+}
+
+@media (max-width: 360px) {
+  .solution-trail { padding: 12px; }
+  .trail-controls { grid-template-columns: 1fr 1.65fr 1fr; gap: 5px; }
+  .trail-control { padding: 8px 5px; gap: 4px; font-size: 10px; }
+  .trail-step > button { width: 49px; }
+  .trail-separator { width: 13px; }
+  .trail-hint { font-size: 11px; }
+}

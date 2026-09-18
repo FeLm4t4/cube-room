@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { CubeStage, type CubePerformance, type CubeStageHandle } from './components/CubeStage'
 import { Icon } from './components/Icon'
+import { SolutionTrail } from './components/SolutionTrail'
 import { createScramble, faceMove, inverseMove, isSolved, moveToNotation, type Face, type Move } from './cube/model'
+import { useSolution } from './cube/useSolution'
 import './App.css'
 
 const GITHUB_URL = 'https://github.com/FeLm4t4/cube-room'
+const SHUFFLE_LENGTH = 80
 const FACES: { face: Face; label: string; color: string }[] = [
   { face: 'U', label: '上', color: '#f4f6f8' },
   { face: 'F', label: '手前', color: '#43b28b' },
@@ -15,7 +18,8 @@ const FACES: { face: Face; label: string; color: string }[] = [
 ]
 const SPEEDS = [{ label: 'ゆっくり', duration: 360 }, { label: '標準', duration: 220 }, { label: '速い', duration: 120 }]
 type ModalKind = 'help' | 'reset' | null
-type Operation = 'play' | 'shuffle' | 'undo'
+type Operation = 'play' | 'shuffle' | 'undo' | 'solution'
+interface TrailState { moves: Move[]; cursor: number }
 
 function formatTime(milliseconds: number) {
   const seconds = Math.floor(milliseconds / 1000)
@@ -73,11 +77,34 @@ export default function App() {
   const [error, setError] = useState('')
   const [shuffleProgress, setShuffleProgress] = useState(0)
   const generationRef = useRef(0)
+  const [solutionVisible, setSolutionVisible] = useState(false)
+  const solutionVisibleRef = useRef(false)
+  const [trail, setTrail] = useState<TrailState>({ moves: [], cursor: 0 })
+  const trailRef = useRef<TrailState>({ moves: [], cursor: 0 })
+  const [solutionPlaying, setSolutionPlaying] = useState(false)
+  const stopPlaybackRef = useRef(false)
+  const pendingCursorRef = useRef<{ move: Move; cursor: number } | null>(null)
+  const canAcceptSolution = useCallback(() => !busyRef.current && (!solutionVisibleRef.current || trailRef.current.cursor === 0), [])
+  const { moves: solutionMoves, movesRef: solutionMovesRef, optimizing, apply: applySolution, reset: resetSolution } = useSolution(
+    ready && !busy && (!solutionVisible || trail.cursor === 0), canAcceptSolution,
+  )
+  const rebaseTrail = useCallback((moves: readonly Move[]) => {
+    const previous = trailRef.current
+    if (previous.cursor === 0 && previous.moves.length === moves.length && moves.every((move, index) => move === previous.moves[index])) return
+    const next = { moves: [...moves], cursor: 0 }
+    trailRef.current = next
+    setTrail(next)
+  }, [])
+
+  useEffect(() => {
+    if (solutionVisibleRef.current && !busyRef.current && trailRef.current.cursor === 0) rebaseTrail(solutionMoves)
+  }, [solutionMoves, solutionVisible, rebaseTrail])
 
   useEffect(() => () => {
     // 画面を閉じた後に、待機中の回転から次の手を実行しない。
     generationRef.current += 1
     readyRef.current = false
+    stopPlaybackRef.current = true
   }, [])
 
   const resetClock = useCallback(() => {
@@ -112,16 +139,28 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [timerRunning])
 
-  const onMove = useCallback((move: Move) => {
-    if (operationRef.current !== 'play') return
+  const onMove = useCallback((move: Move, source: 'user' | 'program') => {
+    const nowSolved = stageRef.current ? isSolved(stageRef.current.getCube()) : false
+    const nextSolution = applySolution(move, nowSolved)
+    const pending = pendingCursorRef.current
+    if (operationRef.current === 'solution' && source === 'program' && pending
+      && pending.move.axis === move.axis && pending.move.layer === move.layer && pending.move.turns === move.turns) {
+      // 実際に回転が確定したときだけ、パンくずの現在位置を動かす。
+      const next = { ...trailRef.current, cursor: pending.cursor }
+      pendingCursorRef.current = null
+      trailRef.current = next
+      setTrail(next)
+    } else if (solutionVisibleRef.current) {
+      rebaseTrail(nextSolution)
+    }
+    setSolved(nowSolved)
+    if (operationRef.current === 'shuffle' || operationRef.current === 'undo') return
     const next = [...historyRef.current, move]
     historyRef.current = next
     setHistory(next)
-    const nowSolved = stageRef.current ? isSolved(stageRef.current.getCube()) : false
-    setSolved(nowSolved)
     if (nowSolved) pauseClock()
     else startClock()
-  }, [pauseClock, startClock])
+  }, [applySolution, pauseClock, rebaseTrail, startClock])
 
   const beginOperation = useCallback((operation: Operation) => {
     if (!readyRef.current || busyRef.current || modalRef.current || !stageRef.current) return false
@@ -177,6 +216,8 @@ export default function App() {
     const generation = generationRef.current
     try {
       stageRef.current!.resetCube()
+      resetSolution()
+      rebaseTrail([])
       historyRef.current = []
       setHistory([])
       resetClock()
@@ -184,10 +225,10 @@ export default function App() {
       setScrambled(true)
       setSolved(false)
       setShuffleProgress(0)
-      const moves = createScramble(20)
+      const moves = createScramble(SHUFFLE_LENGTH)
       for (let index = 0; index < moves.length; index += 1) {
         if (generation !== generationRef.current || !stageRef.current) return
-        await stageRef.current!.playMove(moves[index], Math.min(speedRef.current, 110))
+        await stageRef.current!.playMove(moves[index], Math.min(speedRef.current, 50))
         if (generation !== generationRef.current) return
         setShuffleProgress(index + 1)
       }
@@ -197,7 +238,57 @@ export default function App() {
     } finally {
       if (generation === generationRef.current) endOperation()
     }
-  }, [beginOperation, endOperation, resetClock])
+  }, [beginOperation, endOperation, rebaseTrail, resetClock, resetSolution])
+
+  const pauseSolution = useCallback(() => {
+    stopPlaybackRef.current = true
+  }, [])
+
+  const seekSolution = useCallback(async (target: number) => {
+    const path = trailRef.current.moves
+    if (!solutionVisibleRef.current || target === trailRef.current.cursor || target < 0 || target > path.length) return
+    if (!beginOperation('solution')) return
+    const generation = generationRef.current
+    stopPlaybackRef.current = false
+    setSolutionPlaying(true)
+    try {
+      while (trailRef.current.cursor !== target && !stopPlaybackRef.current) {
+        if (generation !== generationRef.current || !stageRef.current) return
+        const cursor = trailRef.current.cursor
+        const forwards = target > cursor
+        const nextCursor = forwards ? cursor + 1 : cursor - 1
+        const move = forwards ? path[cursor] : inverseMove(path[cursor - 1])
+        pendingCursorRef.current = { move, cursor: nextCursor }
+        await stageRef.current.playMove(move, speedRef.current)
+        if (generation !== generationRef.current) return
+        if (pendingCursorRef.current) throw new Error('回転が確定しませんでした。')
+      }
+    } catch {
+      if (generation === generationRef.current) setError('手順の再生を中断しました。現在の位置から再開できます。')
+    } finally {
+      pendingCursorRef.current = null
+      if (generation === generationRef.current) {
+        setSolutionPlaying(false)
+        endOperation()
+      }
+    }
+  }, [beginOperation, endOperation])
+
+  const closeSolution = useCallback(() => {
+    stopPlaybackRef.current = true
+    solutionVisibleRef.current = false
+    setSolutionVisible(false)
+  }, [])
+
+  const toggleSolution = useCallback(() => {
+    if (busyRef.current) return
+    if (solutionVisibleRef.current) closeSolution()
+    else {
+      rebaseTrail(solutionMovesRef.current)
+      solutionVisibleRef.current = true
+      setSolutionVisible(true)
+    }
+  }, [closeSolution, rebaseTrail, solutionMovesRef])
 
   const closeModal = useCallback(() => {
     modalRef.current = null
@@ -205,6 +296,7 @@ export default function App() {
   }, [])
 
   const openModal = useCallback((kind: Exclude<ModalKind, null>) => {
+    stopPlaybackRef.current = true
     returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     modalRef.current = kind
     setModal(kind)
@@ -225,6 +317,8 @@ export default function App() {
   const reset = useCallback(() => {
     if (busyRef.current || !readyRef.current) return
     stageRef.current?.resetCube()
+    resetSolution()
+    rebaseTrail([])
     historyRef.current = []
     setHistory([])
     scrambledRef.current = false
@@ -233,7 +327,7 @@ export default function App() {
     setError('')
     resetClock()
     closeModal()
-  }, [closeModal, resetClock])
+  }, [closeModal, rebaseTrail, resetClock, resetSolution])
 
   const requestReset = useCallback(() => {
     if (historyRef.current.length || scrambledRef.current) openModal('reset')
@@ -273,7 +367,7 @@ export default function App() {
   const won = solved && history.length > 0
   const shuffling = busy && operationRef.current === 'shuffle'
   const controlsDisabled = !ready || busy
-  const status = !ready ? 'キューブを準備しています' : shuffling ? '20手でシャッフルしています' : won ? '6面が揃いました' : scrambled || history.length ? 'プレイ中' : '完成状態'
+  const status = !ready ? 'キューブを準備しています' : shuffling ? `${SHUFFLE_LENGTH}手でシャッフルしています` : solutionPlaying ? '解法例をたどっています' : won ? '6面が揃いました' : scrambled || history.length ? 'プレイ中' : '完成状態'
   const renderModeLabel = performanceStats?.renderMode === 'GPU' ? 'GPU / WebGL 2' : performanceStats?.renderMode === 'software' ? 'ソフトウェア / WebGL 2' : 'WebGL 2'
 
   return (
@@ -291,7 +385,7 @@ export default function App() {
       </header>
 
       <main id="play" className="main-content">
-        <div className="workspace-grid">
+        <div className={`workspace-grid${solutionVisible ? ' has-solution' : ''}`}>
           <section className={`stage-card${won ? ' is-solved' : ''}`} aria-label="3D ルービックキューブ">
             <div className="stage-topbar">
               <span className="mode-pill">3 × 3 × 3</span>
@@ -321,8 +415,9 @@ export default function App() {
               <div><span className="stat-label">手数</span><span className="stat-value move-value">{String(history.length).padStart(2, '0')}<span className="stat-unit">手</span></span></div>
             </div>
             <p className={`session-status${won ? ' status-solved' : ''}`} aria-live="polite">{won ? <Icon name="check" size={15} /> : <span className={`status-dot${shuffling ? ' is-shuffling' : ''}`} />}{status}</p>
-            <button type="button" className="primary-button shuffle-button" onClick={() => void shuffle()} disabled={controlsDisabled}><Icon name="shuffle" size={19} /><span>{shuffling ? `シャッフル中 ${shuffleProgress}/20` : 'シャッフル'}</span><kbd>Space</kbd></button>
+            <button type="button" className="primary-button shuffle-button" onClick={() => void shuffle()} disabled={controlsDisabled}><Icon name="shuffle" size={19} /><span>{shuffling ? `シャッフル中 ${shuffleProgress}/${SHUFFLE_LENGTH}` : 'シャッフル'}</span><kbd>{SHUFFLE_LENGTH}手</kbd></button>
             <button type="button" className="undo-button" onClick={() => void undo()} disabled={controlsDisabled || !history.length}><Icon name="undo" size={17} /><span>一手戻す</span><span className="undo-shortcut">Ctrl / ⌘ Z</span></button>
+            <button type="button" className={`solution-toggle${solutionVisible ? ' selected' : ''}`} onClick={toggleSolution} disabled={controlsDisabled} aria-expanded={solutionVisible} aria-controls="solution-trail"><Icon name="spark" size={17} /><span>解法例</span><span className="solution-count">{solutionMoves.length ? `残り ${solutionMoves.length}手` : '完成'}</span></button>
 
             <div className="panel-divider" />
             <div className="face-heading"><h2>面を回す</h2><button type="button" className="face-help" onClick={() => openModal('help')} aria-label="面の記号と回転方向について"><Icon name="help" size={16} /></button></div>
@@ -332,6 +427,8 @@ export default function App() {
             <label className="inverse-toggle"><input type="checkbox" checked={inverse} onChange={(event) => { inverseRef.current = event.target.checked; setInverse(event.target.checked) }} /><span className="checkbox-visual"><Icon name="check" size={11} strokeWidth={2.4} /></span><span>逆回転</span><span className="inverse-key-hint"><kbd>Shift</kbd> を押しながらでも</span></label>
             <div className="speed-setting"><h2>回転スピード</h2><div className="speed-options" role="group" aria-label="回転スピード">{SPEEDS.map((option) => <button type="button" key={option.duration} aria-pressed={speed === option.duration} className={speed === option.duration ? 'selected' : ''} onClick={() => { speedRef.current = option.duration; setSpeed(option.duration) }}>{option.label}</button>)}</div></div>
           </aside>
+
+          {solutionVisible && <SolutionTrail moves={trail.moves} cursor={trail.cursor} busy={controlsDisabled} playing={solutionPlaying} optimizing={optimizing} onSeek={(index) => void seekSolution(index)} onPlay={() => void seekSolution(trailRef.current.moves.length)} onPause={pauseSolution} onClose={closeSolution} />}
 
           <section className="history-bar" aria-label="最近の操作履歴">
             <p className="section-kicker">操作履歴</p>

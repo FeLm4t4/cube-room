@@ -105,6 +105,11 @@ kbd { font: inherit; border: 1px solid #dedfd6; background: #f5f6ef; border-radi
 .undo-button:hover:not(:disabled) { background: #edf0e5; border-color: #ccd3be; }
 .undo-button:disabled { color: #b4b8aa; border-color: #eceee5; background: #fafbf7; }
 .undo-shortcut { font-family: 'DM Sans', sans-serif; font-size: 9px; margin-left: auto; opacity: .8; }
+.solution-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; margin-top: 8px; padding: 8px 15px; border: 1px solid #d8dfce; border-radius: 8px; background: #f0f4e8; color: #5d7145; font-size: 11px; }
+.solution-toggle:hover:not(:disabled), .solution-toggle.selected { border-color: #abbc95; background: #e7eedc; }
+.solution-toggle:disabled { opacity: .5; }
+.solution-count { margin-left: auto; font-size: 10px; font-variant-numeric: tabular-nums; }
+.has-solution .stage-card { height: calc(100dvh - 350px); min-height: 520px; }
 .panel-divider { border-top: 1px solid #e9ebe2; margin: 20px 0 17px; }
 .face-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
 .face-heading h2, .speed-setting h2 { font-size: 11px; font-weight: 500; color: #6c7361; }
@@ -210,6 +215,7 @@ kbd { font: inherit; border: 1px solid #dedfd6; background: #f5f6ef; border-radi
   .main-content { padding-top: 12px; }
   .workspace-grid { display: flex; flex-direction: column; gap: 0; }
   .stage-card { width: 100%; min-height: 420px; height: clamp(420px, calc(100dvh - 130px), 500px); border-radius: 12px; order: 0; }
+  .has-solution .stage-card { height: 420px; min-height: 420px; }
   .stage-topbar { top: 14px; left: 16px; right: 14px; }
   .mode-pill { font-size: 11px; padding: 7px 10px; }
   .stage-actions { gap: 7px; }
@@ -231,6 +237,7 @@ kbd { font: inherit; border: 1px solid #dedfd6; background: #f5f6ef; border-radi
   .session-status { margin-top: 8px; }
   .shuffle-button { height: 48px; }
   .undo-button { height: 44px; }
+  .solution-toggle { min-height: 44px; }
   .panel-divider { margin: 22px 0 18px; }
   .face-heading { margin-bottom: 12px; }
   .face-buttons { gap: 9px; }
