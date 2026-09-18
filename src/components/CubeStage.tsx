@@ -26,6 +26,7 @@ export interface CubeStageProps {
   duration?: number;
   showFps?: boolean;
   onPerformance?: (stats: CubePerformance) => void;
+  onInteractionChange?: (active: boolean) => void;
 }
 
 const COLORS: Record<Face, string> = {
@@ -86,6 +87,8 @@ class CubeEngine {
   hitBoxes: THREE.Mesh[] = [];
   cubieGroups: THREE.Group[] = [];
   gesture: Gesture | null = null;
+  interactionActive = false;
+  wheelIdleTimer: ReturnType<typeof setTimeout> | undefined;
   animation: Animation | null = null;
   multi: { center: THREE.Vector2; distance: number } | null = null;
   frame = 0;
@@ -256,6 +259,8 @@ class CubeEngine {
     this.renderer.domElement.setPointerCapture(event.pointerId);
     const point = new THREE.Vector2(event.clientX, event.clientY);
     this.pointers.set(event.pointerId, point);
+    clearTimeout(this.wheelIdleTimer);
+    this.setInteractionActive(true);
     if (this.pointers.size > 1) {
       // 二本目の指が触れたら、途中の面操作を取り消して視点操作へ移る。
       this.gesture = null;
@@ -332,10 +337,14 @@ class CubeEngine {
       this.gesture = null;
       this.pointers.clear();
       this.renderer.domElement.style.cursor = 'grab';
+      this.setInteractionActive(false);
       return;
     }
     const gesture = this.gesture;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+      if (!this.pointers.size && !this.animation) this.setInteractionActive(false);
+      return;
+    }
     this.gesture = null;
     this.renderer.domElement.style.cursor = 'grab';
     if (gesture.kind === 'slice' && gesture.axis) {
@@ -343,7 +352,7 @@ class CubeEngine {
       const move: Move = { axis: gesture.axis, layer: gesture.position[AXIS_INDEX[gesture.axis]] as Layer,
         turns: gesture.angle < 0 ? -1 : 1 };
       void this.animate(move, gesture.angle, commit, 'user', this.props().duration ?? 220);
-    }
+    } else this.setInteractionActive(false);
   };
 
   pointerCancel = (event: PointerEvent) => {
@@ -351,6 +360,7 @@ class CubeEngine {
   };
 
   cancelGesture = () => {
+    clearTimeout(this.wheelIdleTimer);
     this.pointers.clear();
     this.multi = null;
     if (this.gesture) {
@@ -358,14 +368,24 @@ class CubeEngine {
       this.rebuild();
     }
     this.renderer.domElement.style.cursor = 'grab';
+    if (!this.animation) this.setInteractionActive(false);
   };
+
+  setInteractionActive(active: boolean) {
+    if (this.interactionActive === active) return;
+    this.interactionActive = active;
+    this.props().onInteractionChange?.(active);
+  }
 
   contextMenu = (event: Event) => event.preventDefault();
   wheel = (event: WheelEvent) => {
     event.preventDefault();
     if (this.gesture || this.animation) return;
+    clearTimeout(this.wheelIdleTimer);
+    this.setInteractionActive(true);
     const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.height : 1);
     this.zoom(Math.exp(THREE.MathUtils.clamp(delta, -500, 500) * 0.001));
+    this.wheelIdleTimer = setTimeout(() => this.setInteractionActive(false), 120);
   };
 
   onContextLost = (event: Event) => {
@@ -377,6 +397,7 @@ class CubeEngine {
   onContextRestored = () => { this.contextLost = false; this.renderer.shadowMap.needsUpdate = true; this.dirty = true; };
 
   visibilityChange = () => {
+    if (document.hidden) this.cancelGesture();
     this.lastFpsAt = performance.now();
     this.renderedFrames = 0;
     this.dirty = true;
@@ -436,6 +457,7 @@ class CubeEngine {
         if (animation.commit) this.cube = applyMove(this.cube, animation.move);
         this.rebuild();
         if (animation.commit) this.props().onMove(animation.move, animation.source);
+        if (animation.source === 'user') this.setInteractionActive(false);
         animation.resolve();
       }
     }
@@ -460,6 +482,8 @@ class CubeEngine {
     window.removeEventListener('blur', this.cancelGesture);
     document.removeEventListener('visibilitychange', this.visibilityChange);
     this.animation?.resolve();
+    this.animation = null;
+    this.cancelGesture();
     const canvas = this.renderer.domElement;
     canvas.removeEventListener('pointerdown', this.pointerDown);
     canvas.removeEventListener('pointermove', this.pointerMove);

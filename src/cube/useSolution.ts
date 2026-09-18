@@ -1,26 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Move } from './model'
+import type { Cubie, Move } from './model'
 import { advanceSolution } from './solution'
+import { SolutionSearchClient } from './searchClient'
+import type { SearchSeconds } from './searchProtocol'
 
-interface SolutionMessage {
-  id: number
-  moves: Move[]
-  error?: string
-}
-
-export function useSolution(enabled: boolean, canAccept: () => boolean) {
+export function useSolution(
+  enabled: boolean,
+  canAccept: () => boolean,
+  getCube: () => readonly Cubie[] | undefined,
+  searchSeconds: SearchSeconds,
+) {
   const movesRef = useRef<Move[]>([])
-  const versionRef = useRef(0)
-  const workerRef = useRef<Worker | null>(null)
-  const inFlightRef = useRef(false)
-  const pendingRef = useRef<SolutionMessage | null>(null)
+  const clientRef = useRef<SolutionSearchClient | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const enabledRef = useRef(enabled)
   const acceptRef = useRef(canAccept)
+  const getCubeRef = useRef(getCube)
+  const interactingRef = useRef(false)
   const [moves, setMoves] = useState<Move[]>([])
+  const [revision, setRevision] = useState(0)
+  const [pageVisible, setPageVisible] = useState(!document.hidden)
   const [optimizing, setOptimizing] = useState(false)
   const optimizingRef = useRef(false)
   enabledRef.current = enabled
   acceptRef.current = canAccept
+  getCubeRef.current = getCube
 
   const updateOptimizing = useCallback((next: boolean) => {
     if (optimizingRef.current === next) return
@@ -28,80 +32,74 @@ export function useSolution(enabled: boolean, canAccept: () => boolean) {
     setOptimizing(next)
   }, [])
 
+  const interrupt = useCallback(() => {
+    clearTimeout(timerRef.current)
+    timerRef.current = undefined
+    clientRef.current?.cancel()
+  }, [])
+
   const replace = useCallback((next: Move[]) => {
-    versionRef.current += 1
-    pendingRef.current = null
+    interrupt()
     movesRef.current = next
     setMoves(next)
+    setRevision((previous) => previous + 1)
     return next
-  }, [])
+  }, [interrupt])
 
   const apply = useCallback((move: Move, solved: boolean) => {
     return replace(solved ? [] : advanceSolution(movesRef.current, move))
   }, [replace])
   const reset = useCallback(() => replace([]), [replace])
 
+  const setInteractionActive = useCallback((active: boolean) => {
+    if (interactingRef.current === active) return
+    interactingRef.current = active
+    interrupt()
+    // 回転を取り消した場合や、押してすぐ離した場合にも停止後の探索を再開する。
+    setRevision((previous) => previous + 1)
+  }, [interrupt])
+
   useEffect(() => {
-    let worker: Worker
-    try {
-      worker = new Worker(new URL('./solution.worker.ts', import.meta.url), { type: 'module' })
-    } catch {
-      // Workerを使えない環境でも、逆手順と回転の合成はそのまま使える。
-      return
-    }
-    workerRef.current = worker
-    worker.onmessage = (event: MessageEvent<SolutionMessage>) => {
-      inFlightRef.current = false
-      const result = event.data
-      if (!result.error && result.id === versionRef.current && enabledRef.current && acceptRef.current()
-        && result.moves.length < movesRef.current.length) {
-        replace(result.moves)
-      }
-      const pending = pendingRef.current
-      pendingRef.current = null
-      if (pending && pending.id === versionRef.current && enabledRef.current && acceptRef.current()) {
-        inFlightRef.current = true
-        updateOptimizing(true)
-        worker.postMessage(pending)
-      } else {
-        updateOptimizing(false)
-      }
-    }
-    worker.onerror = (event) => {
-      event.preventDefault()
-      worker.terminate()
-      workerRef.current = null
-      inFlightRef.current = false
-      pendingRef.current = null
-      updateOptimizing(false)
-    }
+    const client = new SolutionSearchClient(
+      () => new Worker(new URL('./solution.worker.ts', import.meta.url), { type: 'module' }),
+      (candidate) => {
+        if (!enabledRef.current || interactingRef.current || document.hidden || !acceptRef.current()) return
+        if (candidate.length >= movesRef.current.length) return
+        // 改善解の受け取りでは探索の世代を進めず、最初に設定した期限を保つ。
+        movesRef.current = candidate
+        setMoves(candidate)
+      },
+      updateOptimizing,
+    )
+    clientRef.current = client
     return () => {
-      worker.terminate()
-      workerRef.current = null
-      inFlightRef.current = false
-      pendingRef.current = null
+      clearTimeout(timerRef.current)
+      client.dispose()
+      clientRef.current = null
     }
-  }, [replace, updateOptimizing])
+  }, [updateOptimizing])
 
   useEffect(() => {
-    if (!enabled || moves.length < 4 || !workerRef.current) {
-      pendingRef.current = null
-      updateOptimizing(false)
-      return
+    const onVisibilityChange = () => {
+      if (document.hidden) interrupt()
+      setPageVisible(!document.hidden)
     }
-    updateOptimizing(true)
-    const request = { id: versionRef.current, moves }
-    const timer = window.setTimeout(() => {
-      if (request.id !== versionRef.current || !acceptRef.current()) return
-      updateOptimizing(true)
-      if (inFlightRef.current) pendingRef.current = request
-      else {
-        inFlightRef.current = true
-        workerRef.current?.postMessage(request)
-      }
-    }, 300)
-    return () => window.clearTimeout(timer)
-  }, [enabled, moves, updateOptimizing])
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [interrupt])
 
-  return { moves, movesRef, optimizing, apply, reset }
+  useEffect(() => {
+    interrupt()
+    if (!enabled || !pageVisible || interactingRef.current || movesRef.current.length < 2) return
+    timerRef.current = setTimeout(() => {
+      timerRef.current = undefined
+      if (!enabledRef.current || interactingRef.current || document.hidden || !acceptRef.current()) return
+      const cube = getCubeRef.current()
+      if (!cube) return
+      clientRef.current?.start(cube, movesRef.current, searchSeconds * 1000)
+    }, 300)
+    return interrupt
+  }, [enabled, revision, pageVisible, searchSeconds, interrupt])
+
+  return { moves, movesRef, optimizing, apply, reset, interrupt, setInteractionActive }
 }

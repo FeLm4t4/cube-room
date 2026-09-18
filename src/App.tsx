@@ -84,12 +84,24 @@ export default function App() {
   const [trail, setTrail] = useState<TrailState>({ moves: [], cursor: 0 })
   const trailRef = useRef<TrailState>({ moves: [], cursor: 0 })
   const [solutionPlaying, setSolutionPlaying] = useState(false)
+  const [searchSeconds, setSearchSeconds] = useState<1 | 5 | 10>(() => {
+    try {
+      const stored = Number(localStorage.getItem('cube-room.searchSeconds'))
+      return stored === 5 || stored === 10 ? stored : 1
+    } catch { return 1 }
+  })
   const stopPlaybackRef = useRef(false)
   const pendingCursorRef = useRef<{ move: Move; cursor: number } | null>(null)
   const canAcceptSolution = useCallback(() => !busyRef.current, [])
-  const { moves: solutionMoves, movesRef: solutionMovesRef, optimizing, apply: applySolution, reset: resetSolution } = useSolution(
-    ready && !busy, canAcceptSolution,
+  const getCubeForSolution = useCallback(() => stageRef.current?.getCube(), [])
+  const { moves: solutionMoves, movesRef: solutionMovesRef, optimizing, apply: applySolution, reset: resetSolution, interrupt: interruptSolution, setInteractionActive } = useSolution(
+    ready && !busy, canAcceptSolution, getCubeForSolution, searchSeconds,
   )
+  const changeSearchSeconds = useCallback((seconds: 1 | 5 | 10) => {
+    setSearchSeconds(seconds)
+    try { localStorage.setItem('cube-room.searchSeconds', String(seconds)) }
+    catch { /* 保存できない環境でも、この画面では選択した時間を使う。 */ }
+  }, [])
   const rebaseTrail = useCallback((moves: readonly Move[]) => {
     const previous = trailRef.current
     if (previous.cursor === 0 && previous.moves.length === moves.length && moves.every((move, index) => move === previous.moves[index])) return
@@ -178,11 +190,12 @@ export default function App() {
   const beginOperation = useCallback((operation: Operation) => {
     if (!readyRef.current || busyRef.current || modalRef.current || !stageRef.current) return false
     busyRef.current = true
+    interruptSolution()
     operationRef.current = operation
     setBusy(true)
     setError('')
     return true
-  }, [])
+  }, [interruptSolution])
 
   const endOperation = useCallback(() => {
     operationRef.current = 'play'
@@ -413,7 +426,7 @@ export default function App() {
             </div>
             {showFps && <output className="performance-overlay" aria-label="描画性能"><span><strong>{performanceStats?.fps ?? '—'}</strong> FPS</span><span className="render-mode">{renderModeLabel}</span></output>}
             <div className="cube-stage-slot">
-              <CubeStage ref={stageRef} onMove={onMove} onReady={() => { readyRef.current = true; setReady(true) }} disabled={busy || Boolean(modal)} interactionMode={interactionMode} duration={speed} onError={setError} showFps={showFps} onPerformance={setPerformanceStats} />
+              <CubeStage ref={stageRef} onMove={onMove} onInteractionChange={setInteractionActive} onReady={() => { readyRef.current = true; setReady(true) }} disabled={busy || Boolean(modal)} interactionMode={interactionMode} duration={speed} onError={setError} showFps={showFps} onPerformance={setPerformanceStats} />
             </div>
             {won && <div className="success-note" role="status"><Icon name="check" size={19} /><span>6面が揃いました</span><span className="success-time">{formatTime(elapsed)}</span></div>}
             <div className="stage-bottom">
@@ -445,7 +458,7 @@ export default function App() {
             <div className="speed-setting"><h2>回転スピード</h2><div className="speed-options" role="group" aria-label="回転スピード">{SPEEDS.map((option) => <button type="button" key={option.duration} aria-pressed={speed === option.duration} className={speed === option.duration ? 'selected' : ''} onClick={() => { speedRef.current = option.duration; setSpeed(option.duration) }}>{option.label}</button>)}</div></div>
           </aside>
 
-          {solutionVisible && <SolutionTrail moves={trail.moves} cursor={trail.cursor} busy={controlsDisabled} playing={solutionPlaying} optimizing={optimizing} onSeek={(index) => void seekSolution(index)} onPlay={() => void seekSolution(trailRef.current.moves.length)} onPause={pauseSolution} onClose={closeSolution} />}
+          {solutionVisible && <SolutionTrail moves={trail.moves} cursor={trail.cursor} busy={controlsDisabled} playing={solutionPlaying} optimizing={optimizing} searchSeconds={searchSeconds} onSearchSecondsChange={changeSearchSeconds} onSeek={(index) => void seekSolution(index)} onPlay={() => void seekSolution(trailRef.current.moves.length)} onPause={pauseSolution} onClose={closeSolution} />}
 
           <section className="history-bar" aria-label="最近の操作履歴">
             <p className="section-kicker">操作履歴</p>

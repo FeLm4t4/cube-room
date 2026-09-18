@@ -9,11 +9,15 @@ export interface SolutionTrailProps {
   busy: boolean
   playing: boolean
   optimizing: boolean
+  searchSeconds: 1 | 5 | 10
+  onSearchSecondsChange: (seconds: 1 | 5 | 10) => void
   onSeek: (index: number) => void
   onPlay: () => void
   onPause: () => void
   onClose: () => void
 }
+
+const SEARCH_SECONDS = [1, 5, 10] as const
 
 const NOTATION_DESCRIPTIONS: Record<string, { layer: string; view: string }> = {
   U: { layer: '上の面', view: '上' },
@@ -34,7 +38,7 @@ function describeMove(move: Move) {
   return `${description.layer}を${description.view}から見て${rotation}`
 }
 
-export function SolutionTrail({ moves, cursor, busy, playing, optimizing, onSeek, onPlay, onPause, onClose }: SolutionTrailProps) {
+export function SolutionTrail({ moves, cursor, busy, playing, optimizing, searchSeconds, onSearchSecondsChange, onSeek, onPlay, onPause, onClose }: SolutionTrailProps) {
   const id = useId()
   const listRef = useRef<HTMLOListElement>(null)
   const currentRef = useRef<HTMLButtonElement>(null)
@@ -93,6 +97,14 @@ export function SolutionTrail({ moves, cursor, busy, playing, optimizing, onSeek
           )
         })}
       </ol>
+
+      <div className="trail-search-settings">
+        <span id={`${id}-search-label`} className="trail-search-label">探索時間の上限</span>
+        <div className="trail-search-options" role="group" aria-labelledby={`${id}-search-label`} aria-describedby={`${id}-search-hint`}>
+          {SEARCH_SECONDS.map(seconds => <button key={seconds} type="button" aria-pressed={searchSeconds === seconds} onClick={() => onSearchSecondsChange(seconds)}>{seconds}秒</button>)}
+        </div>
+        <p id={`${id}-search-hint`} className="trail-search-hint">操作が止まると探索します。</p>
+      </div>
 
       <div className="trail-footer">
         <p className={`trail-progress${complete ? ' is-complete' : ''}`} role="status" aria-live="polite" aria-atomic="true">{complete && !optimizing && <Icon name="check" size={14} />}{optimizing && <span className="trail-working-dot" aria-hidden="true" />}{progress}</p>

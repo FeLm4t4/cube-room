@@ -176,21 +176,25 @@ describe('ユーザーの操作に追従する残り手順', () => {
 })
 
 describe('短縮 Worker の応答', () => {
-  it('要求 ID を保ち、失敗した場合は元の手順とエラーを返す', async () => {
+  it('要求 ID を保って改善と完了を返し、失敗しても無効な候補を返さない', async () => {
     const worker = { onmessage: null as ((event: MessageEvent<SolutionRequest>) => void) | null, postMessage: vi.fn() }
     vi.stubGlobal('self', worker)
 
     try {
       await import('./solution.worker')
-      const request = { id: 42, moves: HALF_TURN_LOOP.slice(0, 11) }
+      const moves = HALF_TURN_LOOP.slice(0, 11)
+      const request: SolutionRequest = { type: 'solve', id: 42, cube: apply(invertMoves(moves)), moves, timeoutMs: 1000 }
       worker.onmessage!({ data: request } as MessageEvent<SolutionRequest>)
-      expect(worker.postMessage).toHaveBeenLastCalledWith({ id: 42, moves: [U2] } satisfies SolutionResponse)
+      expect(worker.postMessage).toHaveBeenCalledWith({ type: 'candidate', id: 42, moves: [U2] } satisfies SolutionResponse)
+      expect(worker.postMessage).toHaveBeenLastCalledWith({ type: 'done', id: 42, reason: 'complete' } satisfies SolutionResponse)
 
+      worker.postMessage.mockClear()
       vi.spyOn(solutionModule, 'shortenSolution').mockImplementationOnce(() => { throw new Error('辞書を利用できません。') })
       worker.onmessage!({ data: request } as MessageEvent<SolutionRequest>)
       expect(worker.postMessage).toHaveBeenLastCalledWith({
-        id: 42, moves: request.moves, error: '辞書を利用できません。',
+        type: 'done', id: 42, reason: 'error', error: '辞書を利用できません。',
       } satisfies SolutionResponse)
+      expect(worker.postMessage).toHaveBeenCalledTimes(1)
     } finally {
       vi.restoreAllMocks()
       vi.unstubAllGlobals()

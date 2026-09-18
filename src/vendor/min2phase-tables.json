@@ -1,0 +1,8 @@
+{
+  "package": "min2phase.js",
+  "version": "0.0.4",
+  "sourceSha256": "d2290b47ccf0619ac9937d404ad2762eb0b9306d55a44b95be2f5a770a7ed550",
+  "binarySha256": "c8297d29e2a55ed4f657ad4344a9a43a5b30c8ad9a67fcd468fa818abc29ffb3",
+  "bytes": 1304380,
+  "generatedBy": "node scripts/generate-solver-tables.mjs"
+}
