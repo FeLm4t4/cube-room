@@ -2,7 +2,7 @@
 
 React・TypeScript・Three.jsで作った、ブラウザで遊べる3Dルービックキューブです。
 
-公開URL: https://FeLm4t4.github.io/cube-room/
+Cloudflare WorkersのStatic Assetsで公開できます。
 
 ## 遊び方
 
@@ -51,11 +51,30 @@ npm run build  # TypeScript検査と公開用ビルド
 npm run preview
 ```
 
-## GitHub Pages
+## Cloudflare Workersで公開
 
-リポジトリの **Settings → Pages → Source** を **GitHub Actions** に設定します。`main`へのpushで、テスト・ビルドの成功後に`.github/workflows/deploy.yml`が`dist/`を公開します。
+Cloudflareの **Workers & Pages** で、GitHubの`FeLm4t4/cube-room`を接続します。GitHubリポジトリはPrivateのまま利用できます。
 
-Viteの`base`は`./`です。GitHub Pagesのリポジトリ配下でも、画像やJavaScriptを相対パスで読み込めます。
+| 設定 | 値 |
+| --- | --- |
+| Worker名 | `cube-room` |
+| 本番ブランチ | `main` |
+| ビルドコマンド | `npm test && npm run build` |
+| デプロイコマンド | `npm run deploy` |
+| ルートディレクトリ | `/` |
+| ビルド環境変数 | `NODE_VERSION=24` |
+
+接続後は、`main`へのpushをCloudflareが検知し、テストとビルドの成功後に公開します。公開URLはCloudflareの管理画面で確認できます。GitHub Actionsでも、pushとプルリクエスト時にテストとビルドを実行します。
+
+`wrangler.jsonc`で`dist/`全体を配信します。サーバー用のWorkerコードは不要で、解法の探索はブラウザのWeb Workerで実行します。
+
+手元から公開する場合は、初回に`npx wrangler login`でCloudflareへログインし、次の順に実行します。
+
+```sh
+npm test
+npm run build
+npm run deploy
+```
 
 ## 実装
 
@@ -72,6 +91,6 @@ Viteの`base`は`./`です。GitHub Pagesのリポジトリ配下でも、画像
 
 キューブの状態とアニメーションを分け、回転が終わるたびに整数座標から描画を組み直すことで、繰り返し回しても位置や色がずれないようにしています。
 
-探索は端末内で完結します。探索表を静的ファイルとして配信するため、スマートフォンで重い表の生成を繰り返す必要はありません。min2phase.jsはMITライセンスで利用し、著作権表示と生成元の情報を`src/vendor/`に含めています。探索表は`npm run generate:solver`でも再生成できます。
+探索は端末内で完結します。探索表を静的ファイルとして配信するため、スマートフォンで重い表の生成を繰り返す必要はありません。min2phase.jsはMITライセンスで利用し、著作権表示と生成元の情報を`src/vendor/`に含めています。公開ファイルにも`public/third-party-licenses/min2phase.txt`のライセンス文を同梱します。探索表は`npm run generate:solver`でも再生成できます。
 
-実装時の参照: [Three.js公式ドキュメント](https://threejs.org/docs/)、[ViteのGitHub Pages公開手順](https://vite.dev/guide/static-deploy.html#github-pages)、[GitHub Pagesのカスタムワークフロー](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)。
+実装時の参照: [Three.js公式ドキュメント](https://threejs.org/docs/)、[Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)、[WorkersのGit連携](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/)。

@@ -9,7 +9,8 @@
     "generate:solver": "node scripts/generate-solver-tables.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -25,6 +26,7 @@
     "min2phase.js": "0.0.4",
     "typescript": "~5.9.3",
     "vite": "^7.3.0",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "wrangler": "4.134.0"
   }
 }
