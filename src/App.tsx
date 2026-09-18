@@ -27,23 +27,19 @@ import "./App.css";
 const GITHUB_URL = "https://github.com/FeLm4t4/cube-room";
 const MIN_SHUFFLE_LENGTH = 20;
 const MAX_SHUFFLE_LENGTH = 40;
-const TURN_CONTROLS: {
+const TURN_SHORTCUTS: {
     key: string;
-    label: string;
-    notation: string;
-    color?: string;
     move: Move;
-    viewFrom: string;
 }[] = [
-    { key: "Q", label: "上", notation: "U", color: "#f4f6f8", move: faceMove("U"), viewFrom: "上" },
-    { key: "W", label: "手前", notation: "F", color: "#43b28b", move: faceMove("F"), viewFrom: "手前" },
-    { key: "E", label: "右", notation: "R", color: "#ed604c", move: faceMove("R"), viewFrom: "右" },
-    { key: "A", label: "下", notation: "D", color: "#ffe21a", move: faceMove("D"), viewFrom: "下" },
-    { key: "S", label: "奥", notation: "B", color: "#437ddd", move: faceMove("B"), viewFrom: "奥" },
-    { key: "D", label: "左", notation: "L", color: "#ff720d", move: faceMove("L"), viewFrom: "左" },
-    { key: "Z", label: "左右の間", notation: "M", move: { axis: "x", layer: 0, turns: 1 }, viewFrom: "左" },
-    { key: "X", label: "上下の間", notation: "E", move: { axis: "y", layer: 0, turns: 1 }, viewFrom: "下" },
-    { key: "C", label: "前後の間", notation: "S", move: { axis: "z", layer: 0, turns: -1 }, viewFrom: "手前" },
+    { key: "Q", move: faceMove("U") },
+    { key: "W", move: faceMove("F") },
+    { key: "E", move: faceMove("R") },
+    { key: "A", move: faceMove("D") },
+    { key: "S", move: faceMove("B") },
+    { key: "D", move: faceMove("L") },
+    { key: "Z", move: { axis: "x", layer: 0, turns: 1 } },
+    { key: "X", move: { axis: "y", layer: 0, turns: 1 } },
+    { key: "C", move: { axis: "z", layer: 0, turns: -1 } },
 ];
 const SPEEDS = [
     { label: "ゆっくり", duration: 360 },
@@ -549,7 +545,7 @@ export default function App() {
                 return;
             }
             if (event.ctrlKey || event.metaKey) return;
-            const control = TURN_CONTROLS.find(
+            const control = TURN_SHORTCUTS.find(
                 (item) => item.key.toLowerCase() === event.key.toLowerCase(),
             );
             if (event.code === "Space") {
@@ -857,52 +853,6 @@ export default function App() {
                         </button>
 
                         <div className="panel-divider" />
-                        <div className="face-heading">
-                            <h2>面を回す</h2>
-                            <button
-                                type="button"
-                                className="face-help"
-                                onClick={() => openModal("help")}
-                                aria-label="面の記号と回転方向について"
-                            >
-                                <Icon name="help" size={16} />
-                            </button>
-                        </div>
-                        <p className="face-keyboard-hint">ボタンでも、同じキーでも回せます</p>
-                        <div className="face-buttons" role="group" aria-label="面と中央の層の回転キー" aria-describedby="middle-layer-hint">
-                            {TURN_CONTROLS.map(({ key, label, notation, color, move, viewFrom }) => (
-                                <button
-                                    type="button"
-                                    className={`face-button${move.layer === 0 ? " middle-layer-button" : ""}`}
-                                    key={key}
-                                    disabled={controlsDisabled}
-                                    onClick={(event) =>
-                                        void playTurn(
-                                            move,
-                                            event.shiftKey || inverse,
-                                        )
-                                    }
-                                    aria-keyshortcuts={key}
-                                    aria-label={`${key}：${label}${move.layer === 0 ? "の層" : "の面"}を回す（${notation}${inverse ? "′" : ""}）`}
-                                    title={`${viewFrom}から見て${inverse ? "反時計回り" : "時計回り"}に90°。Shiftを押しながらで逆回転`}
-                                >
-                                    <kbd className="face-key">{key}</kbd>
-                                    <span className="face-notation">{notation}{inverse ? "′" : ""}</span>
-                                    <span className="face-caption">
-                                        {color && (
-                                            <span
-                                                className="face-swatch"
-                                                style={{ backgroundColor: color }}
-                                            />
-                                        )}
-                                        <span className="face-name">{label}</span>
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                        <p className="middle-layer-hint" id="middle-layer-hint">
-                            下の段（Z / X / C）は中央の層を回します
-                        </p>
                         <label className="inverse-toggle">
                             <input
                                 type="checkbox"
@@ -919,7 +869,7 @@ export default function App() {
                                     strokeWidth={2.4}
                                 />
                             </span>
-                            <span>逆回転</span>
+                            <span>キーを逆回転</span>
                             <span className="inverse-key-hint">
                                 <kbd>Shift</kbd> を押しながらでも
                             </span>
@@ -1167,7 +1117,7 @@ export default function App() {
                                 </div>
                             </div>
                             <p className="notation-help">
-                                ボタン右上と履歴の記号は、U＝上、D＝下、F＝手前、B＝奥、L＝左、R＝右です。各面を正面から見て時計回りに90°回転します。面の位置は初期状態が基準です。「′」は逆回転、「2」は180°回転を表します。
+                                履歴と解法例の記号は、U＝上、D＝下、F＝手前、B＝奥、L＝左、R＝右です。各面を正面から見て時計回りに90°回転します。面の位置は初期状態が基準です。「′」は逆回転、「2」は180°回転を表します。
                             </p>
                             <p className="notation-help">
                                 中央の層は、Z＝左右の間（M）、X＝上下の間（E）、C＝前後の間（S）。それぞれ左・下・手前から見て時計回りに回転します。
